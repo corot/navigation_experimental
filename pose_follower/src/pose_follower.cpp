@@ -174,6 +174,8 @@ namespace pose_follower {
                                                  geometry_msgs::TwistStamped &cmd_vel,
                                                  std::string &message)
   {
+    message = "current waypoint: " + std::to_string(current_waypoint_);
+
     //get the current pose of the robot in the fixed frame
     geometry_msgs::PoseStamped robot_pose;
     if(!costmap_ros_->getRobotPose(robot_pose)){
@@ -233,6 +235,7 @@ namespace pose_follower {
         current_waypoint_++;
         target_pose = global_plan_[current_waypoint_];
         diff = diff2D(target_pose.pose, robot_pose.pose);
+        ROS_INFO("Next waypoint: %d", current_waypoint_);
       }
       else
       {
@@ -249,6 +252,7 @@ namespace pose_follower {
     //check if we've reached our goal for long enough to succeed
     if(goal_reached_time_ + ros::Duration(tolerance_timeout_) < ros::Time::now()){
       cmd_vel.twist = geometry_msgs::Twist();
+      message = "goal reached";
     }
 
     return mbf_msgs::ExePathResult::SUCCESS;
@@ -371,7 +375,7 @@ namespace pose_follower {
       res.linear.y = 0.0;
     }
 
-    ROS_DEBUG("Angular command %f", res.angular.z);
+    ROS_DEBUG("Command  %f  %f  %f", res.linear.x, res.linear.y, res.angular.z);
     return res;
   }
 
