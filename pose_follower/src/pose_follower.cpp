@@ -38,7 +38,12 @@
 #include <pose_follower/pose_follower.h>
 #include <pluginlib/class_list_macros.hpp>
 
+// MBF return codes
+#include <mbf_msgs/ExePathResult.h>
+
+// register this planner both as a BaseLocalPlanner and as a MBF's CostmapController plugin
 PLUGINLIB_EXPORT_CLASS(pose_follower::PoseFollower, nav_core::BaseLocalPlanner)
+PLUGINLIB_EXPORT_CLASS(pose_follower::PoseFollower, mbf_costmap_core::CostmapController)
 
 namespace pose_follower {
   PoseFollower::PoseFollower(): tf_(NULL), costmap_ros_(NULL) {}
@@ -103,8 +108,6 @@ namespace pose_follower {
     base_odom_.twist.twist.linear.x = msg->twist.twist.linear.x;
     base_odom_.twist.twist.linear.y = msg->twist.twist.linear.y;
     base_odom_.twist.twist.angular.z = msg->twist.twist.angular.z;
-    ROS_DEBUG("In the odometry callback with velocity values: (%.2f, %.2f, %.2f)",
-        base_odom_.twist.twist.linear.x, base_odom_.twist.twist.linear.y, base_odom_.twist.twist.angular.z);
   }
 
   double PoseFollower::headingDiff(double x, double y, double pt_x, double pt_y, double heading)
@@ -155,14 +158,28 @@ namespace pose_follower {
     pub.publish(gui_path);
   }
 
-  bool PoseFollower::computeVelocityCommands(geometry_msgs::Twist& cmd_vel){
+
+  bool PoseFollower::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
+  {
+    std::string dummy_message;
+    geometry_msgs::PoseStamped dummy_pose;
+    geometry_msgs::TwistStamped dummy_velocity, cmd_vel_stamped;
+    uint32_t outcome = computeVelocityCommands(dummy_pose, dummy_velocity, cmd_vel_stamped, dummy_message);
+    cmd_vel = cmd_vel_stamped.twist;
+    return outcome == mbf_msgs::ExePathResult::SUCCESS;
+  }
+
+  uint32_t PoseFollower::computeVelocityCommands(const geometry_msgs::PoseStamped& pose,
+                                                 const geometry_msgs::TwistStamped& velocity,
+                                                 geometry_msgs::TwistStamped &cmd_vel,
+                                                 std::string &message)
+  {
     //get the current pose of the robot in the fixed frame
     geometry_msgs::PoseStamped robot_pose;
     if(!costmap_ros_->getRobotPose(robot_pose)){
       ROS_ERROR("Can't get robot pose");
-      geometry_msgs::Twist empty_twist;
-      cmd_vel = empty_twist;
-      return false;
+      cmd_vel.twist = geometry_msgs::Twist();
+      return mbf_msgs::ExePathResult::TF_ERROR;
     }
 
     //we want to compute a velocity command based on our current waypoint
@@ -199,13 +216,12 @@ namespace pose_follower {
 
     if(!legal_traj){
       ROS_ERROR("Not legal (%.2f, %.2f, %.2f)", limit_vel.linear.x, limit_vel.linear.y, limit_vel.angular.z);
-      geometry_msgs::Twist empty_twist;
-      cmd_vel = empty_twist;
-      return false;
+      cmd_vel.twist = geometry_msgs::Twist();
+      return mbf_msgs::ExePathResult::NO_VALID_CMD;
     }
 
     //if it is legal... we'll pass it on
-    cmd_vel = test_vel;
+    cmd_vel.twist = test_vel;
 
     bool in_goal_position = false;
     while(fabs(diff.linear.x) <= tolerance_trans_ &&
@@ -232,11 +248,10 @@ namespace pose_follower {
 
     //check if we've reached our goal for long enough to succeed
     if(goal_reached_time_ + ros::Duration(tolerance_timeout_) < ros::Time::now()){
-      geometry_msgs::Twist empty_twist;
-      cmd_vel = empty_twist;
+      cmd_vel.twist = geometry_msgs::Twist();
     }
 
-    return true;
+    return mbf_msgs::ExePathResult::SUCCESS;
   }
 
   bool PoseFollower::setPlan(const std::vector<geometry_msgs::PoseStamped>& global_plan){

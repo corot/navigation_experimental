@@ -43,24 +43,90 @@
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <tf2_ros/buffer.h>
 #include <nav_core/base_local_planner.h>
+#include <mbf_costmap_core/costmap_controller.h>
 #include <costmap_2d/costmap_2d_ros.h>
 #include <geometry_msgs/Pose.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/Twist.h>
+#include <geometry_msgs/TwistStamped.h>
 #include <nav_msgs/Odometry.h>
 #include <pose_follower/PoseFollowerConfig.h>
 #include <dynamic_reconfigure/server.h>
 #include <base_local_planner/trajectory_planner_ros.h>
 
+
 namespace pose_follower {
-  class PoseFollower : public nav_core::BaseLocalPlanner {
+
+  /**
+    * @class PoseFollower
+    * @brief Implements both nav_core::BaseLocalPlanner and mbf_costmap_core::CostmapController abstract
+    * interfaces, so the PoseFollower plugin can be used both in move_base and move_base_flex (MBF).
+    */
+  class PoseFollower : public nav_core::BaseLocalPlanner, public mbf_costmap_core::CostmapController {
     public:
       PoseFollower();
       ~PoseFollower();
       void initialize(std::string name, tf2_ros::Buffer* tf, costmap_2d::Costmap2DROS* costmap_ros);
-      bool isGoalReached();
       bool setPlan(const std::vector<geometry_msgs::PoseStamped>& global_plan);
+
+      /**
+        * @brief Given the current position, orientation, and velocity of the robot, compute velocity commands to send to the base
+        * @param cmd_vel Will be filled with the velocity command to be passed to the robot base
+        * @return True if a valid trajectory was found, false otherwise
+        */
       bool computeVelocityCommands(geometry_msgs::Twist& cmd_vel);
+
+      /**
+        * @brief Given the current position, orientation, and velocity of the robot, compute velocity commands to send to the base.
+        * @remark Extended version for MBF API
+        * @param pose the current pose of the robot.
+        * @param velocity the current velocity of the robot.
+        * @param cmd_vel Will be filled with the velocity command to be passed to the robot base.
+        * @param message Optional more detailed outcome as a string
+        * @return Result code as described on ExePath action result:
+        *         SUCCESS         = 0
+        *         1..9 are reserved as plugin specific non-error results
+        *         FAILURE         = 100   Unspecified failure, only used for old, non-mfb_core based plugins
+        *         CANCELED        = 101
+        *         NO_VALID_CMD    = 102
+        *         PAT_EXCEEDED    = 103
+        *         COLLISION       = 104
+        *         OSCILLATION     = 105
+        *         ROBOT_STUCK     = 106
+        *         MISSED_GOAL     = 107
+        *         MISSED_PATH     = 108
+        *         BLOCKED_PATH    = 109
+        *         INVALID_PATH    = 110
+        *         TF_ERROR        = 111
+        *         NOT_INITIALIZED = 112
+        *         INVALID_PLUGIN  = 113
+        *         INTERNAL_ERROR  = 114
+        *         121..149 are reserved as plugin specific errors
+        */
+      uint32_t computeVelocityCommands(const geometry_msgs::PoseStamped& pose, const geometry_msgs::TwistStamped& velocity,
+                                       geometry_msgs::TwistStamped &cmd_vel, std::string &message);
+
+
+      /**
+        * @brief  Check if the goal pose has been achieved
+        *
+        * The actual check is performed in computeVelocityCommands().
+        * Only the status flag is checked here.
+        * @return True if achieved, false otherwise
+        */
+      bool isGoalReached();
+
+      /**
+        * @brief Dummy version to satisfy MBF API
+        */
+      bool isGoalReached(double xy_tolerance, double yaw_tolerance) { return isGoalReached(); };
+
+      /**
+        * @brief Requests the planner to cancel, e.g. if it takes too much time
+        * @remark New on MBF API
+        * @return True if a cancel has been successfully requested, false if not implemented.
+        */
+      bool cancel() { return false; };
 
     private:
       inline double sign(double n){

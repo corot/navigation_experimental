@@ -17,6 +17,8 @@
   <depend>base_local_planner</depend>
   <depend>costmap_2d</depend>
   <depend>dynamic_reconfigure</depend>
+  <depend>mbf_costmap_core</depend>
+  <depend>mbf_msgs</depend>
   <depend>nav_core</depend>
   <depend>nav_msgs</depend>
   <depend>pluginlib</depend>
@@ -26,5 +28,6 @@
 
   <export>
     <nav_core plugin="${prefix}/blp_plugin.xml" />
+    <mbf_costmap_core plugin="${prefix}/blp_plugin.xml"/>
   </export>
 </package>

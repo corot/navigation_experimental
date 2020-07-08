@@ -4,4 +4,9 @@
       A implementation of a local planner that attempts to follow a plan as closely as possible.
     </description>
   </class>
+  <class name="pose_follower/PoseFollower" type="pose_follower::PoseFollower" base_class_type="mbf_costmap_core::CostmapController">
+    <description>
+      Same plugin implemented MBF CostmapController's extended interface.
+    </description>
+  </class>
 </library>
