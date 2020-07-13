@@ -174,12 +174,11 @@ namespace pose_follower {
                                                  geometry_msgs::TwistStamped &cmd_vel,
                                                  std::string &message)
   {
-    message = "current waypoint: " + std::to_string(current_waypoint_);
-
     //get the current pose of the robot in the fixed frame
     geometry_msgs::PoseStamped robot_pose;
     if(!costmap_ros_->getRobotPose(robot_pose)){
       ROS_ERROR("Can't get robot pose");
+      message = "Can't get robot pose; current waypoint: " + std::to_string(current_waypoint_);
       cmd_vel.twist = geometry_msgs::Twist();
       return mbf_msgs::ExePathResult::TF_ERROR;
     }
@@ -218,6 +217,7 @@ namespace pose_follower {
 
     if(!legal_traj){
       ROS_ERROR("Not legal (%.2f, %.2f, %.2f)", limit_vel.linear.x, limit_vel.linear.y, limit_vel.angular.z);
+      message = "No legal command found; current waypoint: " + std::to_string(current_waypoint_);
       cmd_vel.twist = geometry_msgs::Twist();
       return mbf_msgs::ExePathResult::NO_VALID_CMD;
     }
@@ -254,6 +254,8 @@ namespace pose_follower {
       cmd_vel.twist = geometry_msgs::Twist();
       message = "goal reached";
     }
+    else
+      message = "current waypoint: " + std::to_string(current_waypoint_);
 
     return mbf_msgs::ExePathResult::SUCCESS;
   }
