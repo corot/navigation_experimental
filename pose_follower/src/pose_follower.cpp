@@ -273,12 +273,6 @@ namespace pose_follower {
     return true;
   }
 
-  bool PoseFollower::isGoalReached(double xy_tolerance, double yaw_tolerance){
-    tolerance_trans_ = xy_tolerance;
-    tolerance_rot_ = yaw_tolerance;
-    return isGoalReached();
-  };
-
   bool PoseFollower::isGoalReached(){
     return goal_reached_time_ + ros::Duration(tolerance_timeout_) < ros::Time::now() && stopped();
   }

@@ -117,13 +117,9 @@ namespace pose_follower {
       bool isGoalReached();
 
       /**
-        * @brief Wrapper around isGoalReached that updates tolerance attributes with the values provided by MBF
-        * @remark New on MBF API
-        * @param xy_tolerance translational tolerance to the goal
-        * @param yaw_tolerance rotational tolerance to the goal
-        * @return True if achieved, false otherwise
+        * @brief Dummy version to satisfy MBF API
         */
-      bool isGoalReached(double xy_tolerance, double yaw_tolerance);
+      bool isGoalReached(double xy_tolerance, double yaw_tolerance) { return isGoalReached(); };
 
       /**
         * @brief Requests the planner to cancel, e.g. if it takes too much time
