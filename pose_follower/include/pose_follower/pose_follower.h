@@ -157,6 +157,8 @@ namespace pose_follower {
       std::vector<geometry_msgs::PoseStamped> global_plan_;
       base_local_planner::TrajectoryPlannerROS collision_planner_;
       dynamic_reconfigure::Server<pose_follower::PoseFollowerConfig> *dsrv_;
+      pose_follower::PoseFollowerConfig default_config_;
+      bool setup_;
 
       // Parameters
       double max_vel_lin_, max_vel_th_;

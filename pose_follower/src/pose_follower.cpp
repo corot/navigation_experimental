@@ -46,7 +46,7 @@ PLUGINLIB_EXPORT_CLASS(pose_follower::PoseFollower, nav_core::BaseLocalPlanner)
 PLUGINLIB_EXPORT_CLASS(pose_follower::PoseFollower, mbf_costmap_core::CostmapController)
 
 namespace pose_follower {
-  PoseFollower::PoseFollower(): tf_(NULL), costmap_ros_(NULL) {}
+  PoseFollower::PoseFollower(): tf_(NULL), costmap_ros_(NULL), setup_(false) {}
 
   PoseFollower::~PoseFollower() {
     if (dsrv_)
@@ -80,6 +80,15 @@ namespace pose_follower {
   }
 
   void PoseFollower::reconfigureCB(pose_follower::PoseFollowerConfig &config, uint32_t level) {
+    if (setup_ && config.restore_defaults) {
+      config = default_config_;
+      config.restore_defaults = false;
+    }
+    if ( ! setup_) {
+      default_config_ = config;
+      setup_ = true;
+    }
+
     max_vel_lin_ = config.max_vel_lin;
     max_vel_th_ = config.max_vel_th;
     min_vel_lin_ = config.min_vel_lin;
@@ -89,8 +98,8 @@ namespace pose_follower {
     trans_stopped_velocity_ = config.trans_stopped_velocity;
     rot_stopped_velocity_ = config.rot_stopped_velocity;
 
-    tolerance_trans_ = config.tolerance_trans;
-    tolerance_rot_ = config.tolerance_rot;
+    tolerance_trans_ = config.xy_goal_tolerance;
+    tolerance_rot_ = config.yaw_goal_tolerance;
     tolerance_timeout_ = config.tolerance_timeout;
 
     samples_ = config.samples;
