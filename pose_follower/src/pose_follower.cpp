@@ -57,7 +57,7 @@ namespace pose_follower {
     tf_ = tf;
     costmap_ros_ = costmap_ros;
     current_waypoint_ = 0;
-    goal_reached_time_ = ros::Time::now();
+    goal_reached_time_ = ros::Time();  // zero time; must be ignored on isGoalReached
     ros::NodeHandle node_private("~/" + name);
 
     collision_planner_.initialize(name + "/collision_planner", tf_, costmap_ros_);
@@ -271,7 +271,8 @@ namespace pose_follower {
 
   bool PoseFollower::setPlan(const std::vector<geometry_msgs::PoseStamped>& global_plan){
     current_waypoint_ = 0;
-    goal_reached_time_ = ros::Time::now();
+    goal_reached_time_ = ros::Time();  // zero time; must be ignored on isGoalReached
+
     if(!transformGlobalPlan(*tf_, global_plan, *costmap_ros_, costmap_ros_->getGlobalFrameID(), global_plan_)){
       ROS_ERROR("Could not transform the global plan to the frame of the controller");
       return false;
@@ -283,7 +284,9 @@ namespace pose_follower {
   }
 
   bool PoseFollower::isGoalReached(){
-    return goal_reached_time_ + ros::Duration(tolerance_timeout_) < ros::Time::now() && stopped();
+    return !goal_reached_time_.isZero()
+         && goal_reached_time_ + ros::Duration(tolerance_timeout_) < ros::Time::now()
+         && stopped();
   }
 
   geometry_msgs::Twist PoseFollower::diff2D(const geometry_msgs::Pose& pose1_msg,
